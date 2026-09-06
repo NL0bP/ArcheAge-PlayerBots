@@ -1,8 +1,8 @@
 # ArcheAge 3.0 acceptance runbook
 
-This runbook promotes the `3.0.4.2 r336598` track by evidence, not by configuration. Keep it isolated from a 1.2 server: use a separate checkout, new versioned Login/Game schemas, distinct ports, and a matching client directory.
+The `3.0.4.2 r336598` adapter is frozen. This retained runbook describes historical observations and remaining gates for separately scoped compatibility or release work; it is not an active feature plan. Keep any such run isolated from 1.2 with a separate checkout, versioned databases, distinct ports, and matching assets.
 
-## Current gate state
+## Historical gate state
 
 | Gate | State | Acceptance evidence |
 |---|---|---|

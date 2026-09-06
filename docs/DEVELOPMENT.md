@@ -1,46 +1,21 @@
 # Development
 
-## Working layout
+Use the [pinned installation](INSTALLATION.md) in an isolated AAEmu checkout, with this repository at `modules/archeage-playerbots`. Keep the host integration on its own branch. Module source and tests compile through the conditional targets in `build/`; they remain owned by this repository.
 
-Develop with this repository cloned into a compatible AAEmu checkout:
+## Work on one behavior
 
-```text
-AAEmu/modules/archeage-playerbots
-```
+Put production code in `src/AAEmu.Game`, tests in `tests/AAEmu.UnitTests`, and tunable rotations or archetypes in the existing data files. Preserve the kernel, native game authority, and useful behavior tests. Keep scans and retries bounded.
 
-Run the installer once, commit the host patch in a local AAEmu integration branch, then edit module files normally. The conditional targets compile module code without copying it into AAEmu directories.
+See [Architecture](ARCHITECTURE.md) for boundaries and [Testing](TESTING.md) for build commands and the focused/full-suite cadence.
 
-## Build and test
+## Host changes
 
-From the AAEmu root:
+Use a fresh checkout of the manifest's AAEmu base when changing integration. Add a versioned compatibility patch and document the contract; retain released patches. Do not hide host changes in the installer or copy host-owned code into the module.
 
-```powershell
-dotnet build AAEmu.slnx --no-incremental
-dotnet test AAEmu.UnitTests\AAEmu.UnitTests.csproj --no-build
-```
+AAEmu 3.0 remains frozen. Preserve its compile guards and adapters when changing shared code; repeat its regression at an authorized compatibility or release boundary.
 
-AAEmu UnitTests use Microsoft Testing Platform. For a focused test, build first, run the generated `AAEmu.UnitTests.exe --list-tests`, then use an exact discovered ID with `--filter-uid`.
+## Review
 
-## Change ownership
+Explain the changed behavior, its tests, and remaining gameplay evidence. Check legal skill execution, movement ownership, recovery, native authority, and resource cost where relevant. Preserve [upstream provenance](UPSTREAM-PLAYERBOTS-REFERENCE.md).
 
-- Put new PlayerBots production code under `src/AAEmu.Game`.
-- Put new PlayerBots tests under `tests/AAEmu.UnitTests`.
-- Put tunable behavior in `Data/BotRotations` or `Data/BotArchetypes.json` when possible.
-- Change the AAEmu compatibility patch only when the module truly needs a new host boundary.
-- Do not copy AAEmu-owned files into the module to avoid adding a hook.
-
-When a host-hook change is unavoidable, reproduce it in a fresh checkout of the manifest's base commit, verify the module build/tests, regenerate the named patch, and document the compatibility change in the changelog.
-
-## Review checklist
-
-- Does the action wait for legal skill range and facing?
-- Can follow, combat, heal, death, invalid target, party changes, and logout preempt/recover correctly?
-- Is any scan cached or bounded rather than repeated per bot?
-- Does randomness avoid changing every tick?
-- Are native ArcheAge systems used where they already provide the behavior?
-- Are unit tests paired with one observable physical acceptance case?
-- Are resource measurements compared with an Idle control cohort?
-
-## Data and security
-
-Use versioned isolated test databases. Keep account credentials, server configuration, raw player data, recordings, database snapshots, and large logs out of Git. The synthetic Web API actor is for loopback administration only.
+Use isolated, versioned test data. Keep credentials, client assets, databases, private operations, recordings, and raw logs outside Git. Agent-specific working instructions live in [the agent section](agents/README.md).

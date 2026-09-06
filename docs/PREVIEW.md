@@ -1,33 +1,25 @@
-# Shareable preview
+# Preview archives
 
-Version `0.2.0-alpha.6` targets AAEmu 1.2 commit `62e3eb1d87da01194802ac886cd500134facad28`. The 3.0 adapter is experimental.
+A preview is an exact module source snapshot, with a ZIP, JSON manifest, and SHA-256 sidecar. It contains no AAEmu host, client assets, databases, or runtime evidence.
 
-## Build an archive
+## Create a preview
 
-Run from a clean PlayerBots worktree:
-
-```powershell
-& .\scripts\New-PlayerBotsPreview.ps1 -OutputDirectory C:\playerbots-preview
-```
-
-The packager resolves one commit, verifies patch and migration hashes, and writes a ZIP, JSON manifest, and SHA-256 file. The ZIP contains product source, public documentation, installers, active compatibility patches, and the live monitor. It excludes tests, internal operations, evidence, and development harnesses.
-
-## Install it
-
-Extract the module to:
-
-```text
-AAEmu/modules/archeage-playerbots
-```
-
-Then run:
+From a clean, committed module checkout:
 
 ```powershell
-& .\modules\archeage-playerbots\scripts\Install-PlayerBots.ps1 -AAEmuRoot $PWD -CheckOnly
-& .\modules\archeage-playerbots\scripts\Install-PlayerBots.ps1 -AAEmuRoot $PWD
-dotnet build AAEmu.slnx --no-incremental
+& ./scripts/New-PlayerBotsPreview.ps1 -OutputDirectory ./artifacts/preview-v1 -Ref HEAD
 ```
 
-For 3.0, use its pinned host and add `-Track AAEmu30 -AllowExperimental`.
+`-Ref` can be a different commit or tag. The script reads that revision's module manifest, archives that revision, and verifies patch and migration hashes against the ZIP entries. The filename, version, commit, and sidecars describe the requested snapshot, not the checkout.
 
-The archive contains no AAEmu source, client data, databases, credentials, runtime logs, or local test evidence. Verify its checksum before sharing it.
+Git attributes and line-ending rules affect archived text bytes. A mismatch with the requested manifest is rejected; the packager never substitutes a checkout hash. Existing outputs are never overwritten, and a failed archive is retained for inspection. Use a new output directory for another attempt.
+
+The archive includes product source, public guides, installers, declared compatibility patches, and the live monitor. Tests and local operational records stay out of the user archive. Contributor tooling remains in the Git repository.
+
+## Verify and install
+
+Compare `Get-FileHash <archive.zip> -Algorithm SHA256` (or `sha256sum`) with the sidecar. Check the manifest's module commit, host base, patch identities, and migration hash. A matching checksum proves file identity, not gameplay acceptance.
+
+Extract `archeage-playerbots/` into `AAEmu/modules/`, then follow [Installation](INSTALLATION.md) for the matching pinned host and migration. Do not layer an archive over an unrelated module checkout or an older patched host.
+
+Contributors should run `scripts/Test-PlayerBotsPreview.ps1` as described in [Testing](TESTING.md) when changing the packager.

@@ -23,6 +23,8 @@ This is the closest practical equivalent to the AzerothCore module model until A
 | `Bots/Kernel` | Actions, triggers, values, strategies, decision queue |
 | `Bots/Content` | Default strategies, rotations, triggers, and actions |
 | `Bots/Body` | Facing, legal-range checks, casting, movement, stuck handling |
+| `Bots/Questing` | Native quest discovery, objectives, reporting, and movement ownership |
+| `Bots/Navigation` | Shared roads, route composition, endpoint classification, and path following |
 | `Bots/Social` | Native-party ownership, roles, orders, and follow formation |
 | `Core/Managers/Bots` | Persistent character lifecycle, archetypes, combat coordination |
 | `Models/Tasks/Bots` | Low-level movement and combat tasks |
@@ -42,3 +44,5 @@ This is the closest practical equivalent to the AzerothCore module model until A
 The patch is versioned rather than hidden in an installer. Review it like ordinary source code. When supporting a new AAEmu revision, create a new named patch and manifest entry; do not silently mutate the old compatibility contract.
 
 A future AAEmu module API should replace the patch with registration interfaces for services, startup/shutdown, command discovery, party events, character lifecycle, world queries, and tick metrics. Module source/content can remain unchanged when that boundary exists.
+
+The host patch includes substantive lifecycle, command, quest, and test integration. Preserve its versioned contract and the [upstream reference map](UPSTREAM-PLAYERBOTS-REFERENCE.md). Automated contributors have a separate [agent guide](agents/README.md).

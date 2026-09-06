@@ -22,31 +22,36 @@ if ($LASTEXITCODE -ne 0 -or $commit -notmatch '^[0-9a-f]{40}$') {
     throw "Could not resolve '$Ref' to one Git commit."
 }
 
-$moduleManifestPath = Join-Path $moduleRoot 'playerbots.module.json'
-$moduleManifest = Get-Content -LiteralPath $moduleManifestPath -Raw | ConvertFrom-Json
+$manifestJson = @(& git -C $moduleRoot show "${commit}:playerbots.module.json") -join "`n"
+if ($LASTEXITCODE -ne 0) {
+    throw "Could not read playerbots.module.json from '$commit'."
+}
+$moduleManifest = $manifestJson | ConvertFrom-Json
 $version = [string]$moduleManifest.version
 if ($version -notmatch '^[0-9A-Za-z][0-9A-Za-z.+-]*$') {
     throw "Module version '$version' is not safe for an artifact name."
 }
 
-foreach ($track in $moduleManifest.hostTracks) {
-    $patchPath = Join-Path $moduleRoot ([string]$track.compatibilityPatch).Replace('/', '\')
-    if (-not (Test-Path -LiteralPath $patchPath -PathType Leaf)) {
-        throw "Missing compatibility patch '$($track.compatibilityPatch)'."
+function Get-ArchiveHash($zip, [string] $path) {
+    $entry = $zip.GetEntry("archeage-playerbots/$path")
+    if ($null -eq $entry) { throw "Preview archive is missing '$path'." }
+    $stream = $entry.Open()
+    $sha = [System.Security.Cryptography.SHA256]::Create()
+    try {
+        return [Convert]::ToHexString($sha.ComputeHash($stream)).ToLowerInvariant()
     }
-    $actualPatchHash = (Get-FileHash -LiteralPath $patchPath -Algorithm SHA256).Hash.ToLowerInvariant()
-    if ($actualPatchHash -ne ([string]$track.compatibilityPatchSha256).ToLowerInvariant()) {
-        throw "Compatibility patch hash mismatch for '$($track.id)'."
+    finally {
+        $sha.Dispose()
+        $stream.Dispose()
     }
 }
 
-$migrationPath = Join-Path $moduleRoot ([string]$moduleManifest.install.databaseMigration).Replace('/', '\')
-if (-not (Test-Path -LiteralPath $migrationPath -PathType Leaf)) {
-    throw "Missing database migration '$($moduleManifest.install.databaseMigration)'."
-}
-$actualMigrationHash = (Get-FileHash -LiteralPath $migrationPath -Algorithm SHA256).Hash.ToLowerInvariant()
-if ($actualMigrationHash -ne ([string]$moduleManifest.install.databaseMigrationSha256).ToLowerInvariant()) {
-    throw 'Database migration hash does not match playerbots.module.json.'
+function Assert-ArchiveHash($zip, [string] $path, [string] $expectedHash) {
+    $actualHash = Get-ArchiveHash $zip $path
+    if ($expectedHash -notmatch '^[0-9a-fA-F]{64}$' -or $actualHash -ne $expectedHash.ToLowerInvariant()) {
+        throw "Archived hash mismatch for '$path'."
+    }
+    return $actualHash
 }
 
 $outputRoot = [System.IO.Path]::GetFullPath($OutputDirectory)
@@ -77,13 +82,14 @@ $archiveEntries = @(
     'sql',
     'src',
     'compatibility/README.md',
-    'compatibility/aaemu-1.2-r208022-v4.patch',
-    'compatibility/aaemu-3.0.4.2-r336598-alpha-v4.patch',
     'scripts/Install-PlayerBots.ps1',
     'scripts/install-playerbots.sh',
     'scripts/autonomy/README.md',
     'scripts/autonomy/Show-LiveBotMonitor.ps1'
 )
+$archiveEntries += @($moduleManifest.hostTracks | ForEach-Object { [string]$_.compatibilityPatch })
+$archiveEntries += [string]$moduleManifest.install.compatibilityPatch
+$archiveEntries = @($archiveEntries | Select-Object -Unique)
 
 & git -C $moduleRoot archive --format=zip '--prefix=archeage-playerbots/' `
     "--output=$archivePath" $commit -- $archiveEntries
@@ -97,15 +103,23 @@ $requiredEntries = @(
     'archeage-playerbots/playerbots.module.json',
     'archeage-playerbots/scripts/Install-PlayerBots.ps1',
     'archeage-playerbots/scripts/install-playerbots.sh',
-    'archeage-playerbots/compatibility/aaemu-1.2-r208022-v4.patch',
-    'archeage-playerbots/compatibility/aaemu-3.0.4.2-r336598-alpha-v4.patch',
-    'archeage-playerbots/sql/2026-08-25_aaemu_game_bot_archetype_plans.sql',
     'archeage-playerbots/src/AAEmu.Game/Bots/Questing/BotQuestLifecycleController.cs',
     'archeage-playerbots/scripts/autonomy/Show-LiveBotMonitor.ps1'
 )
 
 $zip = [System.IO.Compression.ZipFile]::OpenRead($archivePath)
 try {
+    # Verify the bytes consumers receive, never files from the current checkout.
+    $reader = [System.IO.StreamReader]::new($zip.GetEntry('archeage-playerbots/playerbots.module.json').Open())
+    try { $moduleManifest = $reader.ReadToEnd() | ConvertFrom-Json }
+    finally { $reader.Dispose() }
+    foreach ($track in $moduleManifest.hostTracks) {
+        $null = Assert-ArchiveHash $zip ([string]$track.compatibilityPatch) ([string]$track.compatibilityPatchSha256)
+    }
+    $null = Assert-ArchiveHash $zip ([string]$moduleManifest.install.compatibilityPatch) `
+        ([string]$moduleManifest.install.compatibilityPatchSha256)
+    $actualMigrationHash = Assert-ArchiveHash $zip ([string]$moduleManifest.install.databaseMigration) `
+        ([string]$moduleManifest.install.databaseMigrationSha256)
     $entryNames = @($zip.Entries | ForEach-Object FullName)
     foreach ($requiredEntry in $requiredEntries) {
         if ($requiredEntry -notin $entryNames) {

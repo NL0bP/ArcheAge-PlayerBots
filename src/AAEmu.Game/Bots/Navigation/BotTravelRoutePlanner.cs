@@ -16,7 +16,7 @@ public static class BotTravelRoutePlanner
     private const float RoadMinimumTravelDistance = 18f;
     private const float RoadMaximumProjectionDistance = 200f;
     private const float RoadWaypointSegmentLength = 8f;
-    private const float DuplicatePointTolerance = 0.35f;
+    private const float DuplicatePointTolerance = BotLocalPathResult.EndpointTolerance;
     private const float MaximumRouteStretch = 5f;
 #if !PLAYERBOTS_AAEMU_3_0
     private static readonly IWorldRoadGraphProvider RoadGraphs =
@@ -35,76 +35,118 @@ public static class BotTravelRoutePlanner
         if (bot?.ParentWorld == null || bot.Transform?.World == null ||
             !IsFinite(destination))
         {
-            return Direct(destination, "world_unavailable");
+            return Direct(destination, "world_unavailable_unverified_direct_compatibility");
         }
 
         var start = bot.Transform.World.Position;
         if (!IsFinite(start))
-            return Direct(destination, "start_invalid");
+            return Direct(destination, "start_invalid_unverified_direct_compatibility");
+
+        return Plan(start, destination, (from, goal) => FindBaiPath(bot, from, goal),
+#if PLAYERBOTS_AAEMU_3_0
+            null);
+#else
+            () => RoadPlanner.Plan(
+                RoadGraphs.Capture(),
+                new RoadRouteEndpoint(bot.ParentWorld.Template.Id, start),
+                new RoadRouteEndpoint(bot.ParentWorld.Template.Id, destination)));
+#endif
+    }
+
+    // Keep host access at the edge so composition is tested with native results,
+    // including missing paths and paths snapped short of the requested endpoint.
+    internal static BotTravelRoute Plan(
+        Vector3 start,
+        Vector3 destination,
+        Func<Vector3, Vector3, IReadOnlyList<Vector3>> findLocalPath,
+        Func<RoadRouteResult> findRoadRoute = null)
+    {
+        if (!IsFinite(start) || !IsFinite(destination))
+            return new BotTravelRoute("unavailable", [], 0, "invalid_endpoint");
 
         var directDistance = Vector3.Distance(start, destination);
-#if !PLAYERBOTS_AAEMU_3_0
-        if (directDistance >= RoadMinimumTravelDistance)
+        if (directDistance <= DuplicatePointTolerance)
+            return new BotTravelRoute("local", [start], 0, "already_within_endpoint_tolerance");
+
+        if (directDistance >= RoadMinimumTravelDistance && findRoadRoute != null)
         {
             try
             {
-                var graph = RoadGraphs.Capture();
-                var worldId = bot.ParentWorld.Template.Id;
-                var road = RoadPlanner.Plan(
-                    graph,
-                    new RoadRouteEndpoint(worldId, start),
-                    new RoadRouteEndpoint(worldId, destination));
-                if (road.IsSuccess && road.Waypoints.Count > 0)
+                var road = findRoadRoute();
+                if (road is { IsSuccess: true } && road.Waypoints.Count > 0)
                 {
                     var points = new List<Vector3>();
-                    AppendBai(bot, points, start, road.StartProjection.Position);
-                    AppendBounded(points, start, road.Waypoints, RoadWaypointSegmentLength);
-                    AppendBai(bot, points, road.DestinationProjection.Position, destination);
-                    Append(points, [destination]);
-                    RemoveOrigin(points, start);
-
-                    var routeLength = Length(start, points);
-                    var maximumReasonableLength = Math.Max(100f, directDistance * MaximumRouteStretch);
-                    if (points.Count > 0 && routeLength <= maximumReasonableLength)
+                    if (AppendLocalConnector(points, start, road.StartProjection.Position, findLocalPath))
                     {
-                        return new BotTravelRoute(
-                            "road+bai",
-                            points,
-                            road.Steps.Count,
-                            $"graph={road.GraphGenerationId} component={road.ComponentId}");
+                        AppendBounded(points, start, road.Waypoints, RoadWaypointSegmentLength);
+                        // Use the emitted road endpoint, not an assumed projection.
+                        var endpoint = points.Count > 0 ? points[^1] : start;
+                        if (AppendLocalConnector(points, endpoint, destination, findLocalPath))
+                        {
+                            RemoveOrigin(points, start);
+                            var routeLength = Length(start, points);
+                            var maximumReasonableLength = Math.Max(100f, directDistance * MaximumRouteStretch);
+                            if (points.Count > 0 && routeLength <= maximumReasonableLength)
+                            {
+                                return new BotTravelRoute(
+                                    "road+bai", points, road.Steps.Count,
+                                    $"graph={road.GraphGenerationId} component={road.ComponentId}");
+                            }
+                        }
                     }
                 }
             }
             catch
             {
-                // Fall back to local navigation when road data is unavailable.
+                // The road layer is optional. Try the native local route next.
             }
         }
-#endif
 
+        var failure = "missing";
         try
         {
-            var local = new List<Vector3>();
-            AppendBai(bot, local, start, destination);
-            Append(local, [destination]);
-            RemoveOrigin(local, start);
-            if (local.Count > 0)
-                return new BotTravelRoute("bai", local, 0, "native_local_path");
+            var result = BotLocalPathResult.Classify(findLocalPath(start, destination), destination);
+            if (result.Status == BotLocalPathStatus.Complete)
+            {
+                var points = new List<Vector3>();
+                Append(points, result.Waypoints);
+                RemoveOrigin(points, start);
+                if (points.Count > 0)
+                    return new BotTravelRoute("bai", points, 0, "native_local_path");
+            }
+            failure = result.Status.ToString().ToLowerInvariant();
         }
         catch
         {
-            // Keep direct local movement as the compatibility fallback.
+            failure = "exception";
         }
 
-        return Direct(destination, "native_navigation_unavailable");
+        // The legacy shared caller requires a destination and restores one for
+        // empty routes. Preserve that compatibility explicitly; this is neither
+        // a verified native path nor proof of arrival. Strict quest failure must
+        // be wired through the movement owner before this fallback can be removed.
+        return Direct(destination, $"native_local_path_{failure}_unverified_direct_compatibility");
     }
 
-    private static void AppendBai(Character bot, ICollection<Vector3> destination, Vector3 start, Vector3 goal)
+    private static bool AppendLocalConnector(
+        ICollection<Vector3> points,
+        Vector3 start,
+        Vector3 goal,
+        Func<Vector3, Vector3, IReadOnlyList<Vector3>> findLocalPath)
     {
         if (Vector3.Distance(start, goal) <= DuplicatePointTolerance)
-            return;
+            return true;
 
-        IReadOnlyList<Vector3> path;
+        var result = BotLocalPathResult.Classify(findLocalPath(start, goal), goal);
+        if (result.Status != BotLocalPathStatus.Complete)
+            return false;
+
+        Append(points, result.Waypoints);
+        return true;
+    }
+
+    private static IReadOnlyList<Vector3> FindBaiPath(Character bot, Vector3 start, Vector3 goal)
+    {
 #if PLAYERBOTS_AAEMU_3_0
         var startPoint = new Point(start.X, start.Y, start.Z);
         var goalPoint = new Point(goal.X, goal.Y, goal.Z);
@@ -114,14 +156,11 @@ public static class BotTravelRoutePlanner
             pos1 = startPoint,
             pos2 = goalPoint
         }.FindPath(startPoint, goalPoint);
-        path = oldPath?.Select(point => new Vector3(point.X, point.Y, point.Z)).ToArray();
+        return oldPath?.Select(point => new Vector3(point.X, point.Y, point.Z)).ToArray();
 #else
-        path = new PathNode { ZoneKey = bot.Transform.ZoneId }
+        return new PathNode { ZoneKey = bot.Transform.ZoneId }
             .FindPath(bot.ParentWorld, start, goal);
 #endif
-        if (path == null || path.Count == 0)
-            return;
-        Append(destination, path);
     }
 
     private static void Append(ICollection<Vector3> destination, IEnumerable<Vector3> source)
@@ -131,7 +170,7 @@ public static class BotTravelRoutePlanner
             if (!IsFinite(point))
                 continue;
             if (destination.LastOrDefault() is var previous && destination.Count > 0 &&
-                Vector3.Distance(previous, point) <= DuplicatePointTolerance)
+                previous == point)
             {
                 continue;
             }

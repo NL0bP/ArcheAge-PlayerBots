@@ -1,121 +1,66 @@
 <p align="center">
-  <img src="assets/playerbots-readme-banner.png" alt="ArcheAge PlayerBots — melee, archer, mage, and healer companions overlooking an ArcheAge coastline" width="100%" />
+  <img src="assets/playerbots-readme-banner.png" alt="ArcheAge PlayerBots companions overlooking an ArcheAge coastline" width="100%" />
 </p>
 
-<p align="center">
-  <a href="https://github.com/NulightJens/ArcheAge-PlayerBots/actions/workflows/validate.yml"><img src="https://github.com/NulightJens/ArcheAge-PlayerBots/actions/workflows/validate.yml/badge.svg" alt="Build and tests" /></a>
-</p>
+# ArcheAge PlayerBots
 
-# ArcheAge PlayerBots Module
+PlayerBots adds server-controlled player characters to [AAEmu](https://github.com/AAEmu/AAEmu). Bring an offline character into the world, invite it to your party, and give it simple orders.
 
-ArcheAge PlayerBots is an [AAEmu](https://github.com/AAEmu/AAEmu) module that lets existing characters play as server-controlled companions while their clients are offline.
-
-Features include:
-
-- logging in an existing character as a bot and saving it through normal logout;
-- creating a persistent character under an explicitly configured server-owned bot account;
-- native party roles and follow, stay, attack, and passive orders;
-- melee, archer, caster, healer, and tank behavior;
-- learned-skill-aware combat decisions that reject unavailable skills and respect native cooldown and resource gates;
-- opt-in nearby quest intake and native monster-hunt/item-gather lifecycle automation;
-- lightweight quest-marker and transfer-road routing with bounded local movement recovery;
-- a static live decision board for quest, combat, navigation, and health state;
-- seven included archetypes with data-driven combat policy;
-- in-game configuration reloads, diagnostics, and performance metrics;
-- optional server-start spawning for selected character IDs.
+- Persistent characters with normal saving and logout.
+- Follow, stay, attack, and passive party commands.
+- Melee, archer, mage, healer, and tank behavior using native skills.
+- Configurable archetypes, rotations, startup bots, and diagnostics.
+- Experimental creation of fresh characters and automatic starter quests on ArcheAge 1.2.
 
 ## Installation
 
-> **Important:** PlayerBots must be installed into a compatible AAEmu checkout at `modules/archeage-playerbots`. It is not a drop-in DLL and it will not build against an arbitrary AAEmu revision. The installer validates the server before making changes.
+PlayerBots is a source module compiled with a compatible AAEmu host. Start with the [installation guide](docs/INSTALLATION.md) for the exact host and module revisions, setup commands, and database migration.
 
-### Quick start
+| Track | Status |
+| --- | --- |
+| ArcheAge 1.2 r208022 | Active development; pinned host required |
+| ArcheAge 3.0.4.2 r336598 | Frozen experimental adapter; retained for compatibility |
 
-From the root of a clean, compatible AAEmu checkout on Windows:
+The repository's alpha features and published releases may differ. Choose an exact module revision when installing or updating.
 
-```powershell
-New-Item -ItemType Directory -Force modules | Out-Null
-git clone https://github.com/NulightJens/ArcheAge-PlayerBots modules/archeage-playerbots
-& .\modules\archeage-playerbots\scripts\Install-PlayerBots.ps1 -AAEmuRoot $PWD
-dotnet build AAEmu.slnx --no-incremental
-```
+## First companion
 
-On Linux or macOS:
-
-```bash
-mkdir -p modules
-git clone https://github.com/NulightJens/ArcheAge-PlayerBots modules/archeage-playerbots
-./modules/archeage-playerbots/scripts/install-playerbots.sh "$PWD"
-dotnet build AAEmu.slnx --no-incremental
-```
-
-The default installer track supports ArcheAge 1.2 `r208022`. ArcheAge 3.0 is available only as an experimental, server-start-validated track; it is not ready for normal gameplay servers.
-
-See the **[Installation Guide](docs/INSTALLATION.md)** for supported AAEmu versions, database setup, updates, and the experimental 3.0 track.
-
-## First bot
-
-Log in with a GM character and choose the ID of an existing offline character:
+After installation, log in as a GM and choose an existing offline character. Replace `2` with its character ID:
 
 ```text
 /addbot 2
-/setclass 2 Darkrunner 55
-/botgear 2 create celestial flame leather nodachi
-/botgear 2 show
-/botstate 2 grind
 ```
 
-You can omit the ID from `/botgear` after selecting the live bot. Grade, Magnificent prefix, armor type, and primary weapon are command variables; see [Bot equipment](docs/COMMANDS.md#bot-equipment) for supported values and the exact fallback rules when a literal matching set does not exist in the active data pack.
-
-Invite the bot through the normal ArcheAge party UI, then give it a role and an order:
+Invite the bot through the normal party UI, then issue an order:
 
 ```text
 /botcontrol 2 role attacker
 /botcontrol 2 follow
-/botcontrol 2 attack
 ```
 
-When finished, save and log out the bot:
+Use `/botcontrol 2 attack` to enable party combat, or `/botcontrol 2 passive` to stop attacking. When finished, `/removebot 2` saves and logs out the character.
 
-```text
-/removebot 2
-```
+See [commands](docs/COMMANDS.md) for other roles, class and gear tools, and diagnostics. Fresh-character questing has a separate [experimental walkthrough](docs/QUEST-AUTONOMY.md#try-a-fresh-nuian).
 
-Replace `2` with your character ID. `/removebot` does not delete the character.
+## Guides
 
-## Documentation
-
-Browse the [PlayerBots Guide](docs/README.md) or jump directly to a task:
-
-| Guide | Description |
+| I want to… | Read |
 | --- | --- |
-| **[Installation Guide](docs/INSTALLATION.md)** | Install, verify, update, or select a supported server track |
-| **[Shareable preview](docs/PREVIEW.md)** | Package or install a checked source preview |
-| **[Configuration](docs/CONFIGURATION.md)** | Configure startup bots, behavior, and performance settings |
-| **[Commands](docs/COMMANDS.md)** | Everyday party commands and advanced GM tools |
-| **[Troubleshooting](docs/TROUBLESHOOTING.md)** | Fix common install, build, database, and gameplay problems |
-
-Run `/bot` in game for the quick command guide or `/help <command>` for exact arguments.
-
-## Compatibility
-
-| ArcheAge version | Status |
-| --- | --- |
-| 1.2 `r208022` | Supported on the documented AAEmu base |
-| 3.0.4.2 `r336598` | Experimental; basic lifecycle, class, gear, and combat are verified. The alpha.6 quest and road automation remains 1.2-only |
-
-PlayerBots uses a small, versioned AAEmu compatibility patch because AAEmu does not yet expose every lifecycle and command hook through a module API. The module remains a separate repository and the installer applies the matching integration automatically.
+| Install or update | [Installation](docs/INSTALLATION.md) |
+| Change bot behavior | [Configuration](docs/CONFIGURATION.md) |
+| Control bots in game | [Commands](docs/COMMANDS.md) |
+| Solve a problem | [Troubleshooting](docs/TROUBLESHOOTING.md) |
+| See what comes next | [Roadmap](docs/ROADMAP.md) |
+| Contribute code or report a bug | [Contributing](CONTRIBUTING.md) |
 
 ## Current limits
 
-- Bot creation requires a dedicated account configured by the server owner; the module does not create accounts.
-- Quest autonomy is opt-in and supports only the objective types documented in [Quest autonomy](docs/QUEST-AUTONOMY.md).
-- Transfer roads guide regional travel, but local movement is not a full navmesh. Obstacles, cliffs, caves, and sparse road data can still cause poor paths.
-- Jump presentation and stealth search behavior are still experimental.
-- No public server-capacity claim is made; measure your own server before increasing bot populations.
-- The 3.0 track is for isolated testing only until its remaining gameplay gates pass.
+Quest autonomy is opt-in and supports only selected native objective types. The fresh-Nuian five-quest scenario still needs repeatable client and restart acceptance on the final candidate. Roads and local paths do not guarantee safe travel through every obstacle, cave, or interior. There is no accepted living-world population or server-capacity target yet.
 
-## Contributing
+## For agents
 
-Bug reports and focused pull requests are welcome. Read [Contributing](CONTRIBUTING.md) and [Development](docs/DEVELOPMENT.md) before changing host hooks or performance-sensitive bot behavior.
+The dedicated [agent guide](docs/agents/README.md) contains the code map, working rules, and validation workflow.
 
-PlayerBots code is distributed under GPL-3.0-or-later; see [LICENSE.GPL](LICENSE.GPL). AAEmu and ArcheAge PlayerBots are not affiliated with XLGames. All product names and trademarks belong to their respective owners.
+## Acknowledgements
+
+This ArcheAge implementation draws on the [Playerbots family](docs/UPSTREAM-PLAYERBOTS-REFERENCE.md), with AAEmu providing the native game systems. PlayerBots is distributed under [GPL-3.0-or-later](LICENSE.GPL); retained file-specific notices still apply. AAEmu and PlayerBots are not affiliated with XLGames.
