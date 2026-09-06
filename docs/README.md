@@ -1,40 +1,20 @@
-# PlayerBots Guide
+# PlayerBots guide
 
-Welcome to the ArcheAge PlayerBots guide. If you are new to the module, start with installation and then follow the first-bot walkthrough.
+Start with [Installation](INSTALLATION.md), then try the [first companion](../README.md#first-companion).
 
-## [Installation Guide](INSTALLATION.md)
+| Guide | Purpose |
+| --- | --- |
+| [Configuration](CONFIGURATION.md) | Startup bots, archetypes, rotations, and performance settings |
+| [Commands](COMMANDS.md) | Party orders, GM tools, and diagnostics |
+| [Troubleshooting](TROUBLESHOOTING.md) | Install, build, database, and gameplay problems |
+| [Bot identities](BOT-IDENTITIES.md) | Create persistent server-owned characters on 1.2 |
+| [Quest autonomy](QUEST-AUTONOMY.md) | Experimental fresh-character walkthrough and supported objectives |
+| [World navigation](WORLD-NAVIGATION.md) | Roads, local paths, and limits |
+| [Preview archives](PREVIEW.md) | Package or verify an exact source revision |
+| [Roadmap](ROADMAP.md) | Current focus and later goals |
 
-Supported AAEmu versions, clean installation, database setup, updates, and the experimental ArcheAge 3.0 track.
+Contributors: [Development](DEVELOPMENT.md), [Architecture](ARCHITECTURE.md), [Testing](TESTING.md), and [Upstream references](UPSTREAM-PLAYERBOTS-REFERENCE.md).
 
-## [Shareable preview](PREVIEW.md)
+Agents: [dedicated agent guide](agents/README.md).
 
-Create or install a checked source archive.
-
-## [Configuration](CONFIGURATION.md)
-
-Startup bots, behavior settings, performance controls, archetypes, and rotations.
-
-## [Commands](COMMANDS.md)
-
-Everyday party controls, GM commands, diagnostics, and local administration.
-
-## Feature guides
-
-- [Bot identities](BOT-IDENTITIES.md)
-- [Quest autonomy](QUEST-AUTONOMY.md)
-- [World navigation](WORLD-NAVIGATION.md)
-- [Live bot monitor](../scripts/autonomy/README.md)
-
-## [Troubleshooting](TROUBLESHOOTING.md)
-
-Solutions for the most common install, build, database, configuration, and bot-behavior problems.
-
-## Development references
-
-These pages are for contributors and release testing:
-
-- [Architecture](ARCHITECTURE.md)
-- [Development](DEVELOPMENT.md)
-- [Testing](TESTING.md)
-- [Roadmap](ROADMAP.md)
-- [ArcheAge 3.0 acceptance runbook](AAEMU30-ACCEPTANCE.md)
+The [3.0 acceptance runbook](AAEMU30-ACCEPTANCE.md) is retained for compatibility work; 3.0 feature development is frozen.

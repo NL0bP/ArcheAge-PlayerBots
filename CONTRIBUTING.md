@@ -1,13 +1,14 @@
 # Contributing
 
-Thank you for improving ArcheAge PlayerBots.
+Bug reports and focused pull requests are welcome. For a bug, include the module revision, AAEmu track/base, what you expected, what happened, and a small reproduction. Exclude credentials and player data.
 
-1. Install the module in a clean compatible AAEmu checkout as described in the [Installation Guide](docs/INSTALLATION.md).
-2. Create a focused branch in the PlayerBots module repository. Use a separate AAEmu integration branch for host-patch work.
-3. Keep new module code under `src/AAEmu.Game` and tests under `tests/AAEmu.UnitTests`.
-4. Run a non-incremental build and the complete AAEmu unit suite.
-5. Describe player-visible behavior, resource impact, and any physical acceptance evidence in the pull request.
+For code changes:
 
-Changes to hot paths must stay bounded and measurable. Avoid per-bot global scans, pairwise crowd calculations, and per-tick randomness. Prefer data rotations, cached world values, and native ArcheAge systems.
+1. Use the pinned AAEmu 1.2 host in the [installation guide](docs/INSTALLATION.md) and a focused module branch.
+2. Keep module source and behavior tests here. Change host patches only when a new host boundary is needed.
+3. Run focused compiled tests while iterating. Run the full 1.2 suite on the final candidate for shared infrastructure or a release; documentation-only edits need link and accuracy checks. See [Testing](docs/TESTING.md).
+4. Describe the player-visible change, validation results, remaining limits, and any resource impact.
 
-Do not commit credentials, raw player data, server databases, client assets, recordings, runtime logs, or generated evidence. Read [Development](docs/DEVELOPMENT.md) and [Testing](docs/TESTING.md) for the full review and evidence checklist.
+Prefer native ArcheAge systems, bounded work, and cached world queries. Preserve useful tests and upstream notices. New features target 1.2; the 3.0 adapter remains frozen.
+
+See [Development](docs/DEVELOPMENT.md) for setup and [Architecture](docs/ARCHITECTURE.md) for the code structure. Automated contributors have a separate [agent guide](docs/agents/README.md).

@@ -130,7 +130,7 @@ Replace `2` with the bot ID. Confirm the bot has a valid archetype and rotation,
 
 **Cause:** The 3.0 track has passed asset and server-start validation, but gameplay acceptance is incomplete.
 
-**Fix:** Use the supported 1.2 track for normal servers. For isolated 3.0 development, follow the [3.0 acceptance runbook](AAEMU30-ACCEPTANCE.md) and opt in explicitly.
+**Fix:** Use the active 1.2 track. The 3.0 adapter is frozen; its [retained runbook](AAEMU30-ACCEPTANCE.md) is for explicitly scoped compatibility work with experimental opt-in.
 
 ### The 3.0 client cannot log in or reports serializer/data errors
 
